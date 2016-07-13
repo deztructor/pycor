@@ -49,6 +49,15 @@ class Member:
     def __set__(self, instance, value):
         setattr(instance, self._unique_name, Member(value, self.name))
 
+class ValidableMember(Member):
+    def __init__(self, validate=None, **kwargs):
+        super().__init__(**kwargs)
+        dummy_validate = lambda n, v: True
+        self._validate = validate or dummy_validate
+
+    def __set__(self, instance, value):
+        self._validate(self.name, value)
+        super().__set__(instance, value)
 
 class StructureFactory(type):
     def __new__(cls, name, bases, attrs):
