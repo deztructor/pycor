@@ -14,6 +14,9 @@ class TestStructure(Structure):
     y = Member('foo', optional=True)
     z = ValidableMember(optional=True, validate=validate_str)
 
+class TestStructure2(Structure):
+    c = Member()
+    d = Member(optional=True)
 
 class StructureTests(unittest.TestCase):
     def test_Structure(self):
@@ -45,6 +48,11 @@ class StructureTests(unittest.TestCase):
             obj.as_dict(),
             {'a': 1, 'b': 2, 'x': 'foobar', 'y': 'foo', 'z': 'Z'}
         )
+
+        obj2 = TestStructure2(c=3)
+        self.assertEqual(obj2.member_names, {'c', 'd'})
+        self.assertEqual(obj2.optional_members, {'d'})
+        self.assertEqual(obj2.as_dict(), {'c': 3, 'd': None})
 
 
 if __name__ == '__main__':

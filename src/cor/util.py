@@ -65,13 +65,18 @@ class StructureFactory(type):
 
     def __init__(cls, name, bases, attrs):
         super().__init__(name, bases, attrs)
+        structure_members = set()
+        optional_members = set()
         for k, v in attrs.items():
             if isinstance(v, Member):
                 v._name = k
                 v._unique_name = '_{}#{}'.format(cls.__name__, id(v))
-                cls._structure_members.add(v.name)
+                structure_members.add(v.name)
                 if v.optional:
-                    cls._optional_members.add(v.name)
+                    optional_members.add(v.name)
+        setattr(cls, '_structure_members', structure_members)
+        setattr(cls, '_optional_members', optional_members)
+
 
 class Structure(metaclass=StructureFactory):
 
@@ -86,9 +91,6 @@ class Structure(metaclass=StructureFactory):
     def as_dict(self):
         return {name: getattr(self, name)
                 for name in self._structure_members}
-
-    _structure_members = set()
-    _optional_members = set()
 
     def __init__(self, **kwargs):
         cls_dict = self.__class__.__dict__
