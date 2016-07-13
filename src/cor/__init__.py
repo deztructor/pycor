@@ -1,3 +1,3 @@
 from .util import \
     is_sparse, compose, \
-    Member, ValidableMember, Structure
+    Member, ValidableMember, Structure, structure

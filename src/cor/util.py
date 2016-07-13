@@ -110,3 +110,12 @@ class Structure(metaclass=StructureFactory):
 
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+def structure(name, **kwargs):
+    for k, v in kwargs.items():
+        if not isinstance(v, Member):
+            raise TypeError('Need dict(Member), got {}={}'.format(k, v))
+
+    return type(name, (Structure,), kwargs)
+
+

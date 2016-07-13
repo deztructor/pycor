@@ -54,6 +54,18 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(obj2.optional_members, {'d'})
         self.assertEqual(obj2.as_dict(), {'c': 3, 'd': None})
 
+    def test_structure(self):
+        AStruct = structure(
+            'Struct',
+            a=Member(optional=True),
+            b=ValidableMember()
+        )
+        with self.assertRaises(ValueError):
+            AStruct()
+        astruct = AStruct(a=1, b=3)
+        self.assertEqual(astruct.member_names, {'a', 'b'})
+        self.assertEqual(astruct.optional_members, {'a',})
+        self.assertEqual(astruct.as_dict(), {'a': 1, 'b': 3})
 
 if __name__ == '__main__':
     unittest.main()
