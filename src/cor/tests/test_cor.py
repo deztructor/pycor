@@ -1,4 +1,4 @@
-import cor
+from cor import *
 import unittest
 
 def validate_str(n, v):
@@ -6,13 +6,13 @@ def validate_str(n, v):
         raise TypeError('Not str {}'.format(n))
 
 
-class TestStructure(cor.Structure):
-    a = cor.Member()
-    x = cor.Member(optional=True)
+class TestStructure(Structure):
+    a = Member()
+    x = Member(optional=True)
 
-    b = cor.Member()
-    y = cor.Member('foo', optional=True)
-    z = cor.ValidableMember(optional=True, validate=validate_str)
+    b = Member()
+    y = Member('foo', optional=True)
+    z = ValidableMember(optional=True, validate=validate_str)
 
 
 class StructureTests(unittest.TestCase):
