@@ -33,98 +33,6 @@ def compose(*fns):
     return fn
 
 
-class Member:
-    def __init__(self, value=None, name=None, optional=False):
-        self._name = name or type(self).__name__
-        self._unique_name = '_{}#{}'.format(self.name, id(self))
-        self.value = value
-        self.optional = optional
-
-    @property
-    def name(self):
-        return self._name
-
-    def __str__(self):
-        return (self.name or '<unknown>') + '=' + (str(self.value) or '<?>')
-
-    def __get__(self, instance, owner):
-        attr = self if instance is None \
-               else getattr(instance, self._unique_name, self)
-        return attr.value
-
-    def __set__(self, instance, value):
-        setattr(instance, self._unique_name, Member(value, self.name))
-
-class ValidableMember(Member):
-    def __init__(self, validate=None, **kwargs):
-        super().__init__(**kwargs)
-        dummy_validate = lambda n, v: True
-        self._validate = validate or dummy_validate
-
-    def __set__(self, instance, value):
-        self._validate(self.name, value)
-        super().__set__(instance, value)
-
-class StructureFactory(type):
-    def __new__(cls, name, bases, attrs):
-        return super().__new__(cls, name, bases, attrs)
-
-    def __init__(cls, name, bases, attrs):
-        super().__init__(name, bases, attrs)
-        structure_members = set()
-        optional_members = set()
-        for k, v in attrs.items():
-            if isinstance(v, Member):
-                v._name = k
-                v._unique_name = '_{}#{}'.format(cls.__name__, id(v))
-                structure_members.add(v.name)
-                if v.optional:
-                    optional_members.add(v.name)
-        setattr(cls, '_structure_members', structure_members)
-        setattr(cls, '_optional_members', optional_members)
-
-
-class Structure(metaclass=StructureFactory):
-
-    @property
-    def member_names(self):
-        return self._structure_members
-
-    @property
-    def optional_members(self):
-        return self._optional_members
-
-    def as_dict(self):
-        return {name: getattr(self, name)
-                for name in self._structure_members}
-
-    def __init__(self, **kwargs):
-        cls_dict = self.__class__.__dict__
-        cls_keys = {name
-                    for name, value in cls_dict.items()
-                    if isinstance(value, Member)}
-        param_keys = set(kwargs.keys())
-        if cls_keys != param_keys:
-            extra_keys = param_keys - cls_keys
-            missing_keys = cls_keys - param_keys - self.optional_members
-            if extra_keys or missing_keys:
-                err = {
-                    'extra': extra_keys,
-                    'missing': missing_keys,
-                }
-                raise ValueError(err)
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-def structure(name, **kwargs):
-    for k, v in kwargs.items():
-        if not isinstance(v, Member):
-            raise TypeError('Need dict(Member), got {}={}'.format(k, v))
-
-    return type(name, (Structure,), kwargs)
-
-
 def is_around(v, pivot, dev=0.000001):
     return math.fabs(v) - pivot < dev
 
@@ -162,3 +70,23 @@ class Attrs(object):
     @classmethod
     def from_map(cls, names, src):
         return cls(*((k, src.get(k)) for k in names))
+
+
+def split_args(keywords_enum, *args):
+    '''use provided enum.Enum to peek args into dict of lists for kwargs'''
+
+    assert all(isinstance(item.value, str) for item in keywords_enum)
+
+    res_args = []
+    res_kwargs = {}
+
+    current_kwarg = None
+    for arg in args:
+        if isinstance(arg, Enum):
+            current_kwarg = res_kwargs.setdefault(arg.value, [])
+        elif current_kwarg is not None:
+            current_kwarg.append(arg)
+        else:
+            res_args.append(arg)
+
+    return res_args, res_kwargs
