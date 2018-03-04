@@ -1,0 +1,5 @@
+* cor library
+
+  The [[https://en.wiktionary.org/wiki/cor#Latin][cor]] library includes Algebraic Data Types (ADT) support (=cor.adt=) and
+  miscelaneous generic small utilities w/o external dependencies that can't be
+  categorized.
