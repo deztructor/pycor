@@ -239,14 +239,6 @@ def _obj_info_for_factory(obj):
 def subrecord(cls_name, **fields):
     return RecordMeta(cls_name, (Record,), fields).get_factory()
 
+
 def extensible_subrecord(cls_name, **fields):
     return RecordMeta(cls_name, (ExtensibleRecord,), fields).get_factory()
-
-
-def record(cls_name, **fields):
-    return RecordMeta(cls_name, (Record,), fields)
-
-
-def extensible_record(cls_name, **fields):
-    return RecordMeta(cls_name, (ExtensibleRecord,), fields)
-

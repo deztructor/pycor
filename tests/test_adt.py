@@ -13,11 +13,9 @@ from cor.adt.error import (
 )
 from cor.adt.record import (
     as_basic_type,
-    extensible_record,
     ExtensibleRecord,
     Factory,
     Record,
-    record,
     subrecord,
 )
 from cor.adt.operation import (
@@ -269,16 +267,16 @@ def test_and():
 
 
 def test_empty_record():
-    foo_cls = record('Foo')
-    assert Record in foo_cls.mro()
+    class Foo(Record):
+        pass
 
-    foo = foo_cls()
+    foo = Foo()
     assert isinstance(foo, Record)
     assert list(foo.gen_names()) == []
     assert list(foo.gen_fields()) == []
     assert as_basic_type(foo) == {}
 
-    @as_basic_type.register(foo_cls)
+    @as_basic_type.register(Foo)
     def _(v):
         return v.__class__.__name__
 
@@ -297,10 +295,8 @@ def test_empty_record():
 
 
 def test_minimal_record():
-    Foo = record(
-        'Foo',
-        id=expect_type(int)
-    )
+    class Foo(Record):
+        id = expect_type(int)
 
     pytest.raises(RecordError, Foo)
 
@@ -318,19 +314,15 @@ def test_minimal_record():
     assert as_basic_type(foo2) == {'id': 12}
     assert foo2 == foo
 
-    LT24 = record(
-        'LT24',
-        id=convert(int) & only_if(lambda v: v < 24, '< 24')
-    )
+    class LT24(Record):
+        id = convert(int) & only_if(lambda v: v < 24, '< 24')
 
     assert LT24(id=12) == foo2
     assert LT24(id=13) != foo2
 
-    Duet = record(
-        'Duet',
-        id=convert(int),
-        name=convert(str)
-    )
+    class Duet(Record):
+        id = convert(int)
+        name = convert(str)
 
     assert Duet(id=99, name='foo') == Duet(id=99, name='foo')
     assert Duet(id=99, name=1) == Duet(id='99', name='1')
@@ -404,3 +396,24 @@ def test_extensible_record():
     power_truck = PowerTruck({**truck, 'breaks': 'disk'})
     assert as_basic_type(power_truck) == truck_data, \
         "PowerTruck is not extensible, should drop unknown fields"
+
+
+def test_invariant():
+    import ipaddress
+
+    class Host(Record):
+        ip=ipaddress.ip_address
+        mask=int
+
+    @as_basic_type.register(ipaddress.IPv4Address)
+    def ipv4_as_basic_type(v):
+        return str(v)
+
+    h = Host(ip='1.1.1.1', mask=24)
+    assert as_basic_type(h) == {'ip': '1.1.1.1', 'mask': 24}
+
+    class NetHost(Host):
+        gateway=ipaddress.ip_address
+
+    h = NetHost(ip='1.1.1.1', mask=24, gateway='1.1.1.2')
+    assert as_basic_type(h) == {'gateway': '1.1.1.2', 'ip': '1.1.1.1', 'mask': 24}
