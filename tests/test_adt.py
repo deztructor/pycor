@@ -399,7 +399,7 @@ def test_extensible_record():
     power_truck = PowerTruck({**truck, 'breaks': 'disk'})
     assert as_basic_type(power_truck) == truck_data, \
         "PowerTruck is not extensible, should drop unknown fields"
-
+    assert power_truck.get_truck_data() == (20.5, 400)
 
 def test_invariant():
     import ipaddress

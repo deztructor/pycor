@@ -39,8 +39,15 @@ class RecordMeta(abc.ABCMeta):
                 if issubclass(base, RecordBase):
                     yield base._fields.items()
 
+        ns_fields = []
+        ns_wo_fields = {}
+        for k, v in namespace.items():
+            if isinstance(v, Operation):
+                ns_fields.append((k, v))
+            else:
+                ns_wo_fields[k] = v
+
         all_bases_fields = (items for base in bases for items in gen_mro_fields(base))
-        ns_fields = ((k, v) for k, v in namespace.items() if isinstance(v, Operation))
         fields = {k: v for k, v in itertools.chain(*all_bases_fields, ns_fields)}
 
         slots = itertools.chain(
@@ -55,7 +62,12 @@ class RecordMeta(abc.ABCMeta):
             '_contract_info': ContractInfo('convert to' + name),
             '_factory': None
         }
-        return super().__new__(cls, name, (record_base,), cls_dict, **kwds)
+
+        return super().__new__(
+            cls, name, (record_base,),
+            {**ns_wo_fields, **cls_dict},
+            **kwds
+        )
 
 
 class RecordBase(collections.Mapping):
