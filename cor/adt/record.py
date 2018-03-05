@@ -101,6 +101,10 @@ class RecordBase(collections.Mapping):
         return cls._fields
 
     @classmethod
+    def get_field_converter(cls, name) -> Operation:
+        return cls._fields[name]
+
+    @classmethod
     def prepare_field_from_input(cls, name: str, data: collections.Mapping):
         conversion = cls._fields[name]
         return conversion.prepare_field(name, data)
@@ -246,9 +250,17 @@ def record_as_basic_type(s):
     return {k: as_basic_type(v) for k, v in s.gen_fields()}
 
 
-def subrecord(cls_name, **fields):
+def record_factory(cls_name, **fields):
     return RecordMeta(cls_name, (Record,), fields).get_factory()
 
 
-def extensible_subrecord(cls_name, **fields):
+def extensible_record_factory(cls_name, **fields):
     return RecordMeta(cls_name, (ExtensibleRecord,), fields).get_factory()
+
+
+def subrecord(record_type):
+    if issubclass(record_type, RecordBase):
+        return record_type.get_factory()
+    if issubclass(record_type, Factory):
+        return record_type
+    raise TypeError('Provide a Record or Factory')

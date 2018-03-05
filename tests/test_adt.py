@@ -17,6 +17,7 @@ from cor.adt.record import (
     Factory,
     Record,
     subrecord,
+    record_factory,
 )
 from cor.adt.operation import (
     ContractInfo,
@@ -286,7 +287,7 @@ def test_empty_record():
     pytest.raises(AttributeError, setattr, foo, 'bar', 1)
     pytest.raises(AttributeError, getattr, foo, 'bar')
 
-    foo_factory = subrecord('Foo')
+    foo_factory = record_factory('Foo')
     assert isinstance(foo_factory, Factory)
 
     foo2 = foo_factory()
@@ -402,12 +403,20 @@ def test_extensible_record():
         "PowerTruck is not extensible, should drop unknown fields"
     assert power_truck.get_truck_data() == (20.5, 400)
 
+    class BicycleOwner(Record):
+        name = expect_type(str)
+        transport = subrecord(Bicycle)
+
+    bicycle_owner = BicycleOwner(name='bob', transport=bicycle)
+    assert as_basic_type(bicycle_owner) == {'name': 'bob', 'transport': bicycle_data}
+
+
 def test_subrecord():
     import ipaddress
 
     class Host(Record):
         name = expect_type(str) & not_empty
-        connection = subrecord(
+        connection = record_factory(
             'Connection',
             ip=convert(ipaddress.ip_address),
             mask=expect_type(int),
@@ -426,6 +435,12 @@ def test_subrecord():
         RecordError,
         Host, dict(name='bar', connection={**connection_data, 'gateway': 's'})
     )
+
+    class Host2(Record):
+        hostname = expect_type(str)
+        connection = Host.get_field_converter('connection')
+
+    host2 = Host2(hostname='bar', connection=connection_data)
 
 
 def test_invariant():
