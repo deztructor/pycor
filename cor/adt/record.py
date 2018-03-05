@@ -6,11 +6,12 @@ import types
 
 from .error import *
 from .operation import (
-    as_basic_type,
-    convert,
-    ContractInfo,
     _obj_info,
+    as_basic_type,
+    ContractInfo,
+    convert,
     default_conversion,
+    Operation,
 )
 
 
