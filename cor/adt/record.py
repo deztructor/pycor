@@ -40,11 +40,7 @@ class RecordMeta(abc.ABCMeta):
                     yield base._fields.items()
 
         all_bases_fields = (items for base in bases for items in gen_mro_fields(base))
-        ns_fields = (
-            (k, default_conversion(v))
-            for k, v in namespace.items()
-            if not k.startswith('_')
-        )
+        ns_fields = ((k, v) for k, v in namespace.items() if isinstance(v, Operation))
         fields = {k: v for k, v in itertools.chain(*all_bases_fields, ns_fields)}
 
         slots = itertools.chain(

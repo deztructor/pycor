@@ -339,8 +339,8 @@ def test_extensible_record():
 
     class Wheeler(ExtensibleRecord):
         vehicle_type = convert(WheelerType)
-        model = str
-        wheels = int
+        model = expect_type(str)
+        wheels = expect_type(int)
 
     pytest.raises(RecordError, Wheeler, vehicle_type='table', model='choo', wheels=4)
 
@@ -352,10 +352,10 @@ def test_extensible_record():
     assert dict(vehicle) == car_dict
 
     class Car(Record):
-        vehicle_type = WheelerType.Car
-        model = str
-        wheels = int
-        doors = int
+        vehicle_type = should_be(WheelerType.Car)
+        model = expect_type(str)
+        wheels = expect_type(int)
+        doors = expect_type(int)
 
     car = Car(vehicle)
     assert as_basic_type(car) == car_data
@@ -365,9 +365,9 @@ def test_extensible_record():
         Rim = 'rim'
 
     class Bicycle(Record):
-        vehicle_type = WheelerType.Bicycle
-        model = str
-        wheels = int
+        vehicle_type = should_be(WheelerType.Bicycle)
+        model = expect_type(str)
+        wheels = expect_type(int)
         breaks = convert(BicycleBreakType)
 
     bicycle_data = dict(vehicle_type='bicycle', model='DIY', wheels=2, breaks='disk')
@@ -379,8 +379,8 @@ def test_extensible_record():
     assert as_basic_type(bicycle) == bicycle_data
 
     class Truck(Wheeler):
-        vehicle_type = WheelerType.Truck
-        capacity = float
+        vehicle_type = should_be(WheelerType.Truck)
+        capacity = expect_type(float)
 
     truck_data = dict(vehicle_type='truck', model='DIY', wheels=8, capacity=20.5, power=400)
     truck_wheeler = Wheeler(truck_data)
@@ -391,7 +391,10 @@ def test_extensible_record():
     assert isinstance(truck, Wheeler)
 
     class PowerTruck(Record, Truck):
-        power = int
+        power = expect_type(int)
+
+        def get_truck_data(self):
+            return (self.capacity, self.power)
 
     power_truck = PowerTruck({**truck, 'breaks': 'disk'})
     assert as_basic_type(power_truck) == truck_data, \
@@ -402,8 +405,8 @@ def test_invariant():
     import ipaddress
 
     class Host(Record):
-        ip=ipaddress.ip_address
-        mask=int
+        ip=convert(ipaddress.ip_address)
+        mask=expect_type(int)
 
     @as_basic_type.register(ipaddress.IPv4Address)
     def ipv4_as_basic_type(v):
@@ -413,7 +416,7 @@ def test_invariant():
     assert as_basic_type(h) == {'ip': '1.1.1.1', 'mask': 24}
 
     class NetHost(Host):
-        gateway=ipaddress.ip_address
+        gateway=convert(ipaddress.ip_address)
 
     h = NetHost(ip='1.1.1.1', mask=24, gateway='1.1.1.2')
     assert as_basic_type(h) == {'gateway': '1.1.1.2', 'ip': '1.1.1.1', 'mask': 24}
