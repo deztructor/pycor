@@ -187,10 +187,8 @@ class Record(RecordBase, metaclass=RecordMeta):
         self._initialized = True
 
     def __setattr__(self, name, value):
-        if name not in self.__slots__:
-            raise AttributeError()
-        if name != '_initialized' and self._initialized:
-            raise AccessError()
+        if name != '_initialized' and name in self.__slots__ and self._initialized:
+            raise AccessError(name)
         super().__setattr__(name, value)
 
     def gen_names(self):
