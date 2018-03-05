@@ -12,6 +12,7 @@ from .operation import (
     convert,
     default_conversion,
     Operation,
+    UnaryOperation,
 )
 
 
@@ -151,7 +152,7 @@ class RecordBase(collections.Mapping):
             raise KeyError(name) from err
 
 
-class Factory:
+class Factory(UnaryOperation):
     '''Wraps record construction
 
     The purpose of factory is to combine record contracts using operators
@@ -159,6 +160,9 @@ class Factory:
     '''
     def __init__(self, record_type):
         self._record_type = record_type
+        def convert(v):
+            return self(v)
+        super().__init__(convert)
 
     def __call__(self, *args, **kwargs):
         return self._record_type(*args, **kwargs)
@@ -172,6 +176,10 @@ class Factory:
     @property
     def record_type(self):
         return self._record_type
+
+    @property
+    def info(self):
+        return self._record_type.__name__
 
 
 class Record(RecordBase, metaclass=RecordMeta):
@@ -236,11 +244,6 @@ class ExtensibleRecord(RecordBase, metaclass=RecordMeta):
 @as_basic_type.register(RecordBase)
 def record_as_basic_type(s):
     return {k: as_basic_type(v) for k, v in s.gen_fields()}
-
-
-_obj_info.register(Factory)
-def _obj_info_for_factory(obj):
-    return obj.record_type.__name__
 
 
 def subrecord(cls_name, **fields):

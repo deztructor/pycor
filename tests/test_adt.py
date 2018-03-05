@@ -23,6 +23,7 @@ from cor.adt.operation import (
     convert,
     expect_type,
     expect_types,
+    not_empty,
     only_if,
     provide_missing,
     should_be,
@@ -400,6 +401,32 @@ def test_extensible_record():
     assert as_basic_type(power_truck) == truck_data, \
         "PowerTruck is not extensible, should drop unknown fields"
     assert power_truck.get_truck_data() == (20.5, 400)
+
+def test_subrecord():
+    import ipaddress
+
+    class Host(Record):
+        name = expect_type(str) & not_empty
+        connection = subrecord(
+            'Connection',
+            ip=convert(ipaddress.ip_address),
+            mask=expect_type(int),
+            gateway=convert(ipaddress.ip_address)
+        )
+
+    @as_basic_type.register(ipaddress.IPv4Address)
+    def ipv4_as_basic_type(v):
+        return str(v)
+
+    connection_data = dict(ip='1.2.3.4', mask=24, gateway='1.2.3.1')
+    host_data = dict(name='foo', connection=connection_data)
+    host = Host(host_data)
+    assert as_basic_type(host) == host_data
+    pytest.raises(
+        RecordError,
+        Host, dict(name='bar', connection={**connection_data, 'gateway': 's'})
+    )
+
 
 def test_invariant():
     import ipaddress
