@@ -345,10 +345,10 @@ def test_extensible_record():
         Car = 'car'
         Truck = 'truck'
 
-    Wheeler = extensible_record(
-        'Wheeler',
-        vehicle_type=convert(WheelerType), model=str, wheels=int
-    )
+    class Wheeler(ExtensibleRecord):
+        vehicle_type = convert(WheelerType)
+        model = str
+        wheels = int
 
     pytest.raises(RecordError, Wheeler, vehicle_type='table', model='choo', wheels=4)
 
@@ -359,11 +359,12 @@ def test_extensible_record():
     car_dict = dict(vehicle_type=WheelerType.Car, model='choo', wheels=4, doors=5)
     assert dict(vehicle) == car_dict
 
-    Car = record(
-        'Car',
-        vehicle_type=WheelerType.Car, model=str, wheels=int,
-        doors=int
-    )
+    class Car(Record):
+        vehicle_type = WheelerType.Car
+        model = str
+        wheels = int
+        doors = int
+
     car = Car(vehicle)
     assert as_basic_type(car) == car_data
 
@@ -371,11 +372,12 @@ def test_extensible_record():
         Disk = 'disk'
         Rim = 'rim'
 
-    Bicycle = record(
-        'Bicycle',
-        vehicle_type=WheelerType.Bicycle, model=str, wheels=int,
-        breaks=convert(BicycleBreakType)
-    )
+    class Bicycle(Record):
+        vehicle_type = WheelerType.Bicycle
+        model = str
+        wheels = int
+        breaks = convert(BicycleBreakType)
+
     bicycle_data = dict(vehicle_type='bicycle', model='DIY', wheels=2, breaks='disk')
     vehicle2 = Wheeler(bicycle_data)
     assert vehicle2 != vehicle
@@ -384,13 +386,21 @@ def test_extensible_record():
     bicycle = Bicycle(vehicle2)
     assert as_basic_type(bicycle) == bicycle_data
 
-    Truck = Wheeler.get_factory().extend(
-        'Truck',
-        vehicle_type=WheelerType.Truck, capacity=float
-    )
-    truck_data = dict(vehicle_type='truck', model='DIY', wheels=8, capacity=20.5)
+    class Truck(Wheeler):
+        vehicle_type = WheelerType.Truck
+        capacity = float
+
+    truck_data = dict(vehicle_type='truck', model='DIY', wheels=8, capacity=20.5, power=400)
     truck_wheeler = Wheeler(truck_data)
     truck = Truck(truck_wheeler)
 
-    assert as_basic_type(truck) == truck_data
+    assert as_basic_type(truck) == truck_data, \
+        "Truck is still extensible, should return all passed data"
     assert isinstance(truck, Wheeler)
+
+    class PowerTruck(Record, Truck):
+        power = int
+
+    power_truck = PowerTruck({**truck, 'breaks': 'disk'})
+    assert as_basic_type(power_truck) == truck_data, \
+        "PowerTruck is not extensible, should drop unknown fields"

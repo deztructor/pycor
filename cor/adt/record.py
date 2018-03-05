@@ -1,3 +1,4 @@
+import abc
 import collections
 import functools
 import itertools
@@ -21,11 +22,51 @@ def _get_input_mapping(values, overrides):
     return {**values, **overrides}
 
 
+class RecordMeta(abc.ABCMeta):
+    def __init__(cls, name, bases, namespace, **kwds):
+        cls._factory = Factory(cls)
+
+    def __new__(cls, name, bases, namespace, **kwds):
+        record_base=bases[0]
+        if record_base == RecordBase:
+            return super().__new__(cls, name, bases, namespace, **kwds)
+
+        def gen_mro_fields(kls):
+            if not hasattr(kls, 'mro'):
+                return
+            for base in reversed(kls.mro()):
+                if issubclass(base, RecordBase):
+                    yield base._fields.items()
+
+        all_bases_fields = (items for base in bases for items in gen_mro_fields(base))
+        ns_fields = (
+            (k, default_conversion(v))
+            for k, v in namespace.items()
+            if not k.startswith('_')
+        )
+        fields = {k: v for k, v in itertools.chain(*all_bases_fields, ns_fields)}
+
+        slots = itertools.chain(
+            fields.keys(),
+            record_base._service_fields,
+            ['__dict__'] if record_base == ExtensibleRecord else []
+        )
+
+        cls_dict = {
+            '_fields': types.MappingProxyType(fields),
+            '__slots__': tuple(slots),
+            '_contract_info': ContractInfo('convert to' + name),
+            '_factory': None
+        }
+        return super().__new__(cls, name, (record_base,), cls_dict, **kwds)
+
+
 class RecordBase(collections.Mapping):
     '''Base class for ADT'''
 
     __slots__ = tuple()
     _fields = {}
+    _factory = None
 
     @classmethod
     def get_factory(cls):
@@ -101,7 +142,30 @@ class RecordBase(collections.Mapping):
             raise KeyError(name) from err
 
 
-class Record(RecordBase):
+class Factory:
+    '''Wraps record construction
+
+    The purpose of factory is to combine record contracts using operators
+
+    '''
+    def __init__(self, record_type):
+        self._record_type = record_type
+
+    def __call__(self, *args, **kwargs):
+        return self._record_type(*args, **kwargs)
+
+    def __or__(self, other):
+        return convert(self) | other
+
+    def __and__(self, other):
+        return convert(self) & other
+
+    @property
+    def record_type(self):
+        return self._record_type
+
+
+class Record(RecordBase, metaclass=RecordMeta):
     __slots__ = tuple()
     _service_fields = ('_initialized',)
 
@@ -127,7 +191,7 @@ class Record(RecordBase):
         return len(self._fields)
 
 
-class ExtensibleRecord(RecordBase):
+class ExtensibleRecord(RecordBase, metaclass=RecordMeta):
     '''Base class for ADT'''
 
     __slots__ = tuple()
@@ -167,76 +231,22 @@ def record_as_basic_type(s):
     return {k: as_basic_type(v) for k, v in s.gen_fields()}
 
 
-class Factory:
-    '''Wraps record construction
-
-    The purpose of factory is to combine record contracts using operators
-
-    '''
-
-    def __init__(self, record_base, cls_name, **fields):
-        fields = {k: default_conversion(v) for k, v in fields.items()}
-
-        slots = itertools.chain(
-            fields.keys(),
-            record_base._service_fields,
-            ['__dict__'] if record_base == ExtensibleRecord else []
-        )
-
-        cls_dict = {
-            '_fields': types.MappingProxyType(fields),
-            '__slots__': tuple(slots),
-            '_contract_info': ContractInfo('convert to' + cls_name),
-            '_factory': self
-        }
-        self._record_type = type(cls_name, (record_base,), cls_dict)
-
-    def __call__(self, *args, **kwargs):
-        return self._record_type(*args, **kwargs)
-
-    def __or__(self, other):
-        return convert(self) | other
-
-    def __and__(self, other):
-        return convert(self) & other
-
-    @property
-    def record_type(self):
-        return self._record_type
-
-    def extend(self, cls_name, **augmenting_fields):
-        fields = {
-            **self._record_type.get_contract(),
-            **augmenting_fields
-        }
-        return Factory(self._record_type, cls_name, **fields)
-
-
 _obj_info.register(Factory)
 def _obj_info_for_factory(obj):
     return obj.record_type.__name__
 
 
-class RecordFactory(Factory):
-    def __init__(self, cls_name, **fields):
-        super().__init__(Record, cls_name, **fields)
+def subrecord(cls_name, **fields):
+    return RecordMeta(cls_name, (Record,), fields).get_factory()
 
-
-class ExtensibleRecordFactory(Factory):
-    def __init__(self, cls_name, **fields):
-        super().__init__(ExtensibleRecord, cls_name, **fields)
-
-
-subrecord = RecordFactory
-extensible_subrecord = ExtensibleRecordFactory
+def extensible_subrecord(cls_name, **fields):
+    return RecordMeta(cls_name, (ExtensibleRecord,), fields).get_factory()
 
 
 def record(cls_name, **fields):
-    return RecordFactory(cls_name, **fields).record_type
+    return RecordMeta(cls_name, (Record,), fields)
 
 
 def extensible_record(cls_name, **fields):
-    return ExtensibleRecordFactory(cls_name, **fields).record_type
-
-
+    return RecordMeta(cls_name, (ExtensibleRecord,), fields)
 
