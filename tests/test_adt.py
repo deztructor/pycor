@@ -212,7 +212,7 @@ def test_or():
 
 
 def test_and():
-    conversion = convert(int) & convert(str)
+    conversion = convert(int) >> convert(str)
 
     _test_binop_conversion(
         conversion,
@@ -224,7 +224,7 @@ def test_and():
         (None, InvalidFieldError),
     )
 
-    conversion = conversion & convert(float)
+    conversion = conversion >> convert(float)
     _test_binop_conversion(
         conversion,
         Input.Good,
@@ -235,7 +235,7 @@ def test_and():
         (None, InvalidFieldError),
     )
 
-    conversion = skip_missing & convert(int)
+    conversion = skip_missing >> convert(int)
     _test_prepare_field(
         conversion,
         Input.Good,
@@ -245,7 +245,7 @@ def test_and():
         ('foo', {'foo': 's'}, InvalidFieldError),
     )
 
-    conversion = provide_missing(42) & convert(int)
+    conversion = provide_missing(42) >> convert(int)
     _test_prepare_field(
         conversion,
         Input.Good,
@@ -305,7 +305,7 @@ def test_minimal_record():
     assert foo2 == foo
 
     class LT24(Record):
-        id = convert(int) & only_if(lambda v: v < 24, '< 24')
+        id = convert(int) >> only_if(lambda v: v < 24, '< 24')
 
     assert LT24(id=12) == foo2
     assert LT24(id=13) != foo2
@@ -403,7 +403,7 @@ def test_subrecord():
     import ipaddress
 
     class Host(Record):
-        name = expect_type(str) & not_empty
+        name = expect_type(str) >> not_empty
         connection = record_factory(
             'Connection',
             ip=convert(ipaddress.ip_address),

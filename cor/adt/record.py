@@ -190,8 +190,8 @@ class Factory(SimpleConversion):
     def __or__(self, other):
         return convert(self) | other
 
-    def __and__(self, other):
-        return convert(self) & other
+    def __rshift__(self, other):
+        return convert(self) >> other
 
     @property
     def record_type(self):

@@ -61,8 +61,8 @@ class Operation(abc.ABC):
 
 
 class CombineMixin:
-    def __and__(self, fn):
-        return And(self, default_conversion(fn))
+    def __rshift__(self, fn):
+        return Pipe(self, default_conversion(fn))
 
     def __or__(self, fn):
         return Or(self, default_conversion(fn))
@@ -156,8 +156,8 @@ class BinaryOperation(Operation):
 
 
 
-class And(BinaryOperation, CombineMixin):
-    _operation_name = 'and'
+class Pipe(BinaryOperation, CombineMixin):
+    _operation_name = 'then'
 
     def prepare_field(self, field_name, values):
         left_res = self._left.prepare_field(field_name, values)
@@ -225,8 +225,8 @@ class _SkipMissing(UnaryOperation):
         input_data = values.get(field_name)
         return input_data or self._convert_field(field_name, input_data)
 
-    def __and__(self, other):
-        return And(self, other)
+    def __rshift__(self, other):
+        return Pipe(self, other)
 
 
 skip_missing = _SkipMissing()
