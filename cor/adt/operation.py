@@ -208,14 +208,7 @@ skip_missing = _SkipMissing()
 
 
 class _ProvideMissing(UnaryOperation):
-    def __init__(self, default_value=Ellipsis, **kwargs):
-        if default_value is Ellipsis:
-            if not kwargs:
-                raise ValueError('Provide default_value or kwargs')
-            default_value = kwargs
-        elif kwargs:
-            raise ValueError('Provide or default_value, or kwargs')
-
+    def __init__(self, default_value):
         @describe_contract('provide {} if missing'.format(default_value))
         def replace_optional(v):
             return default_value if v is None else v

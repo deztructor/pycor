@@ -83,15 +83,12 @@ def test_convert():
     )
 
 def test_provide_missing():
-    pytest.raises(ValueError, provide_missing)
-    pytest.raises(ValueError, provide_missing, 'foo', bar=1)
-
     _test_conversion(
         provide_missing('foo'),
         Input.Good, (13, 13), ('', ''), (None, 'foo'),
     )
     _test_conversion(
-        provide_missing(a=1, b=2),
+        provide_missing({'a': 1, 'b': 2}),
         Input.Good, (13, 13), ('', ''), (None, {'a': 1, 'b': 2}),
     )
 
