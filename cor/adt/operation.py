@@ -1,6 +1,8 @@
 import abc
+import collections
 import enum
 import functools
+import typing
 
 from . import error
 
@@ -43,19 +45,27 @@ def _obj_info_for_enum(obj):
 
 
 class Operation(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def info(self) -> str:
+        '''get operation contract info'''
+
+    @abc.abstractmethod
+    def prepare_field(self, field_name: str, values: collections.Mapping):
+        '''extract and convert data for the field
+
+        Function should extract and convert field value from the provided
+        `values` mapping or return `None` if target field shouldn't be set.
+
+        '''
+
+
+class CombineMixin:
     def __and__(self, fn):
         return And(self, default_conversion(fn))
 
     def __or__(self, fn):
         return Or(self, default_conversion(fn))
-
-    def _get_from_input(self, field_name, values):
-        return values[field_name]
-
-    @property
-    @abc.abstractmethod
-    def info(self):
-        '''get operation contract info'''
 
 
 _obj_info.register(Operation)
@@ -65,7 +75,7 @@ def _obj_info_for_operation(obj):
 
 @functools.singledispatch
 def default_conversion(obj):
-    return UnaryOperation(obj)
+    return SimpleConversion(obj)
 
 
 @default_conversion.register(type)
@@ -78,9 +88,15 @@ def default_conversion_for_operation(obj):
     return obj
 
 
-class UnaryOperation(Operation):
+class UnaryOperation(Operation, CombineMixin):
+    '''An operation performing conversion using `convert` function
+
+    This is abstract class providing basic policies. Subclass should implement
+    `prepare_field()`, deciding on source data extraction policy.
+
+    '''
+
     def __init__(self, convert):
-        assert convert != self
         super().__init__()
         if isinstance(convert, Operation):
             assert isinstance(convert, UnaryOperation)
@@ -93,35 +109,40 @@ class UnaryOperation(Operation):
         res = _obj_info(self._convert)
         return str(res) if isinstance(res, ContractInfo) else 'convert to ' + res
 
-    def prepare_field(self, field_name, values):
-        res = self._construct_field(field_name, values)
-        if res is None:
-            raise error.MissingFieldError(field_name)
-        return res
-
-    def process_value(self, v):
-        return self._convert(v)
-
-    def _construct_field(self, field_name, values):
+    def _convert_field(self, field_name, value):
         try:
-            input_data = self._get_from_input(field_name, values)
-        except KeyError as err:
-            return None
-        except Exception as err:
-            raise error.InvalidFieldError(field_name, _obj_info(err))
-
-        try:
-            return (field_name, self._convert(input_data))
+            return self._convert(value)
         except error.Error:
             raise
         except Exception as err:
             raise error.InvalidFieldError(field_name, _obj_info(err)) from err
 
 
+class SimpleConversion(UnaryOperation):
+    '''Operation converting data from the input using `convert`
+
+    If field is missing the operation ends up in the MissingFieldError
+
+    '''
+
+    def convert(self, value):
+        return self._convert(value)
+
+    def prepare_field(self, field_name, values):
+        try:
+            input_data = values[field_name]
+        except KeyError as err:
+            raise error.MissingFieldError(field_name) from err
+        except Exception as err:
+            raise error.InvalidFieldError(field_name, _obj_info(err)) from err
+
+        return self._convert_field(field_name, input_data)
+
+
 class BinaryOperation(Operation):
-    def __init__(self, left, right):
-        assert left != self
-        assert right != self
+    '''Operation combining two operations'''
+
+    def __init__(self, left: Operation, right: Operation):
         self._left = left
         self._right = right
 
@@ -135,19 +156,19 @@ class BinaryOperation(Operation):
 
 
 
-class And(BinaryOperation):
+class And(BinaryOperation, CombineMixin):
     _operation_name = 'and'
 
     def prepare_field(self, field_name, values):
-        res = self._left.prepare_field(field_name, values)
-        if res is None:
-            return res
+        left_res = self._left.prepare_field(field_name, values)
+        return (
+            None if left_res is None
+            else
+            self._right.prepare_field(field_name, {**values, field_name: left_res})
+        )
 
-        name, value = res
-        return self._right.prepare_field(field_name, {**values, name: value})
 
-
-class Or(BinaryOperation):
+class Or(BinaryOperation, CombineMixin):
     _operation_name = 'or'
 
     def prepare_field(self, field_name, values):
@@ -174,7 +195,7 @@ def describe_contract(info):
 
 
 def convert(fn):
-    return fn if isinstance(fn, Operation) else UnaryOperation(fn)
+    return fn if isinstance(fn, Operation) else SimpleConversion(fn)
 
 
 class Tag(enum.Enum):
@@ -201,13 +222,17 @@ class _SkipMissing(UnaryOperation):
         super().__init__(identity)
 
     def prepare_field(self, field_name, values):
-        return self._construct_field(field_name, values)
+        input_data = values.get(field_name)
+        return input_data or self._convert_field(field_name, input_data)
+
+    def __and__(self, other):
+        return And(self, other)
 
 
 skip_missing = _SkipMissing()
 
 
-class _ProvideMissing(UnaryOperation):
+class _ProvideMissing(SimpleConversion):
     def __init__(self, default_value):
         @describe_contract('provide {} if missing'.format(default_value))
         def replace_optional(v):
@@ -215,9 +240,8 @@ class _ProvideMissing(UnaryOperation):
 
         super().__init__(replace_optional)
 
-    def _get_from_input(self, field_name, values):
-        value = values.get(field_name, None)
-        return self._convert(value)
+    def prepare_field(self, field_name, values):
+        return self._convert_field(field_name, values.get(field_name))
 
 
 provide_missing = _ProvideMissing

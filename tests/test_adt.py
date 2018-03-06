@@ -50,7 +50,7 @@ def _prepare_test_args(*data, good=list(), bad=list()):
 
 def _test_good_bad(info, convert, good, bad):
     for input_data, expected in good:
-        test_info = '{}: Right value: {}'.format(info, input_data)
+        test_info = '{}: Correct input: {}'.format(info, input_data)
         res = convert(*input_data)
         assert res == expected, test_info
 
@@ -64,7 +64,7 @@ def _test_conversion(conversion, *args, **kwargs):
     good, bad = _prepare_test_args(*args, **kwargs)
     good = [([value], res) for value, res in good]
     bad = [([value], res) for value, res in bad]
-    _test_good_bad(conversion.info, conversion.process_value, good, bad)
+    _test_good_bad(conversion.info, conversion.convert, good, bad)
 
 
 def _test_prepare_field(conversion, *args, **kwargs):
@@ -94,7 +94,7 @@ def test_provide_missing():
 
 
 def test_only_if():
-    conversion = only_if(lambda x: x < 10, 'foo')
+    conversion = only_if(lambda x: x < 10, 'less than 10')
 
     _test_conversion(
         conversion,
@@ -105,7 +105,7 @@ def test_only_if():
     _test_prepare_field(
         conversion,
         Input.Good,
-        ('foo', {'foo': 9}, ('foo', 9)),
+        ('foo', {'foo': 9}, 9),
         Input.Bad,
         ('foo', {'foo': 10}, InvalidFieldError),
         ('foo', {'bar': 10}, MissingFieldError),
@@ -118,7 +118,7 @@ def test_skip_missing():
         conversion,
         Input.Good,
         ('foo', {}, None),
-        ('foo', {'bar': 1, 'foo': 2}, ('foo', 2)),
+        ('foo', {'bar': 1, 'foo': 2}, 2),
     )
 
 
@@ -141,7 +141,7 @@ def test_expect_types():
     _test_conversion(conversion, Input.Good, (b'bar', b'bar'))
     _test_prepare_field(
         conversion,
-        Input.Good, ('foo', {'foo': b'bar'}, ('foo', b'bar')),
+        Input.Good, ('foo', {'foo': b'bar'}, b'bar'),
         Input.Bad, ('foo', 1, InvalidFieldError),
     )
 
@@ -161,7 +161,7 @@ def _test_binop_conversion(conversion, *args, **kwargs):
 
     good, bad = _prepare_test_args(*args, **kwargs)
     good = [
-        (['foo', {'foo': value}], ('foo', res))
+        (['foo', {'foo': value}], res)
         for value, res in good
     ]
     bad = [
@@ -202,21 +202,12 @@ def test_or():
         (no_str_conversion, no_str_conversion),
     )
 
-    conversion = skip_missing | convert(int)
-    _test_prepare_field(
-        conversion,
-        Input.Good,
-        ('foo', {'foo': '1'}, ('foo', '1')),
-        Input.Bad,
-        ('foo', {}, MissingFieldError),
-    )
-
     conversion = provide_missing(42) | int
     _test_prepare_field(
         conversion,
         Input.Good,
-        ('foo', {}, ('foo', 42)),
-        ('foo', {'foo': 13}, ('foo', 13)),
+        ('foo', {}, 42),
+        ('foo', {'foo': 13}, 13),
     )
 
 
@@ -248,7 +239,7 @@ def test_and():
     _test_prepare_field(
         conversion,
         Input.Good,
-        ('foo', {'foo': '1'}, ('foo', 1)),
+        ('foo', {'foo': '1'}, 1),
         ('foo', {}, None),
         Input.Bad,
         ('foo', {'foo': 's'}, InvalidFieldError),
@@ -258,8 +249,8 @@ def test_and():
     _test_prepare_field(
         conversion,
         Input.Good,
-        ('foo', {}, ('foo', 42)),
-        ('foo', {'foo': 13}, ('foo', 13)),
+        ('foo', {}, 42),
+        ('foo', {'foo': 13}, 13),
         Input.Bad,
         ('foo', {'foo': 'bar'}, InvalidFieldError),
     )

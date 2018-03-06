@@ -12,7 +12,7 @@ from .operation import (
     convert,
     default_conversion,
     Operation,
-    UnaryOperation,
+    SimpleConversion,
 )
 
 
@@ -88,9 +88,9 @@ class RecordBase(collections.Mapping):
 
         for name, conversion in cls._fields.items():
             try:
-                name_value = conversion.prepare_field(name, data)
-                if name_value is not None:
-                    yield name_value
+                res = conversion.prepare_field(name, data)
+                if res is not None:
+                    yield (name, res)
             except Error as err:
                 raise RecordError(cls_name, err) from err
             except Exception as err:
@@ -156,7 +156,7 @@ class RecordBase(collections.Mapping):
             raise KeyError(name) from err
 
 
-class Factory(UnaryOperation):
+class Factory(SimpleConversion):
     '''Wraps record construction
 
     The purpose of factory is to combine record contracts using operators
