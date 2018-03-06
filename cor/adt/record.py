@@ -85,6 +85,14 @@ class RecordBase(collections.Mapping):
     __slots__ = tuple()
     _fields = {}
     _factory = None
+    _service_fields = ('_initialized',)
+
+    def __init__(self, values=None, **overrides):
+        values = _get_input_mapping(values, overrides)
+
+        self._initialized = False
+        self._initialize(values)
+        self._initialized = True
 
     @classmethod
     def get_factory(cls):
@@ -196,15 +204,10 @@ class Factory(SimpleConversion):
 
 class Record(RecordBase, metaclass=RecordMeta):
     __slots__ = tuple()
-    _service_fields = ('_initialized',)
 
-    def __init__(self, values=None, **overrides):
-        values = _get_input_mapping(values, overrides)
-
-        self._initialized = False
+    def _initialize(self, values):
         for name, value in self.gen_fields_from_input(values):
             setattr(self, name, value)
-        self._initialized = True
 
     def __setattr__(self, name, value):
         if name != '_initialized' and name in self.__slots__ and self._initialized:
@@ -222,20 +225,14 @@ class ExtensibleRecord(RecordBase, metaclass=RecordMeta):
     '''Base class for ADT'''
 
     __slots__ = tuple()
-    _service_fields = ('_initialized',)
 
-    def __init__(self, values=None, **overrides):
-        values = _get_input_mapping(values, overrides)
-
-        self._initialized = False
+    def _initialize(self, values):
         for name, value in self.gen_fields_from_input(values):
             setattr(self, name, value)
 
         other_keys = values.keys() - self._fields.keys()
         for k in other_keys:
             setattr(self, k, values[k])
-
-        self._initialized = True
 
     def __setattr__(self, name, value):
         if name != '_initialized' and self._initialized:
