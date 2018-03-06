@@ -321,17 +321,3 @@ def choose_by_field(name, union_factories):
         return cls(data)
 
     return convert(create)
-
-
-class FieldInvariant:
-    def __init__(self, ensure_invariant):
-        error.ensure_callable(ensure_invariant)
-        self._ensure_invariant = ensure_invariant
-
-    def check_field(self, record, field_name):
-        try:
-            self._ensure_invariant(record, field_name)
-        except FieldError:
-            raise
-        except Exception as err:
-            raise InvalidFieldError(field_name, err)
