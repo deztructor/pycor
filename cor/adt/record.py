@@ -24,6 +24,20 @@ def _get_input_mapping(values, overrides):
     return {**values, **overrides}
 
 
+def _split_record_namespace(namespace):
+    fields = []
+    other = {}
+    for k, v in namespace.items():
+        if isinstance(v, Operation):
+            fields.append((k, v))
+        else:
+            other[k] = v
+    return types.SimpleNamespace(
+        fields=fields,
+        other=other
+    )
+
+
 class RecordMeta(abc.ABCMeta):
     def __init__(cls, name, bases, namespace, **kwds):
         cls._factory = Factory(cls)
@@ -40,16 +54,10 @@ class RecordMeta(abc.ABCMeta):
                 if issubclass(base, RecordBase):
                     yield base._fields.items()
 
-        ns_fields = []
-        ns_wo_fields = {}
-        for k, v in namespace.items():
-            if isinstance(v, Operation):
-                ns_fields.append((k, v))
-            else:
-                ns_wo_fields[k] = v
+        namespaces = _split_record_namespace(namespace)
 
         all_bases_fields = (items for base in bases for items in gen_mro_fields(base))
-        fields = {k: v for k, v in itertools.chain(*all_bases_fields, ns_fields)}
+        fields = {k: v for k, v in itertools.chain(*all_bases_fields, namespaces.fields)}
 
         slots = itertools.chain(
             fields.keys(),
@@ -66,7 +74,7 @@ class RecordMeta(abc.ABCMeta):
 
         return super().__new__(
             cls, name, (record_base,),
-            {**ns_wo_fields, **cls_dict},
+            {**namespaces.other, **cls_dict},
             **kwds
         )
 
