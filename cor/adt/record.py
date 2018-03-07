@@ -89,9 +89,12 @@ class RecordBase(collections.Mapping):
     def __init__(self, values=None, **overrides):
         values = _get_input_mapping(values, overrides)
 
-        self._initialized = False
-        self._initialize(values)
-        self._initialized = True
+        try:
+            self._initialized = False
+            self._initialize(values)
+            self._initialized = True
+        except Exception as err:
+            raise RecordError(self.__class__.__name__, "init") from err
 
     @classmethod
     def get_factory(cls):
@@ -106,10 +109,10 @@ class RecordBase(collections.Mapping):
                 res = conversion.prepare_field(name, data)
                 if res is not None:
                     yield (name, res)
-            except Error as err:
-                raise RecordError(cls_name, err) from err
+            except FieldError as err:
+                raise
             except Exception as err:
-                raise RecordError(cls_name, InvalidFieldError(name, err)) from err
+                raise InvalidFieldError(name, 'input') from err
 
     @classmethod
     def get_contract(cls) -> collections.Mapping:
