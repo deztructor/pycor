@@ -194,7 +194,8 @@ def describe_contract(info):
     return decorator
 
 
-def convert(fn):
+def convert(fn: typing.Union[Operation, typing.Callable]) -> Operation:
+    '''treat provided callable as simple conversion'''
     return fn if isinstance(fn, Operation) else SimpleConversion(fn)
 
 
