@@ -24,6 +24,7 @@ from cor.adt.operation import (
     convert,
     expect_type,
     expect_types,
+    get_contract_info,
     not_empty,
     only_if,
     provide_missing,
@@ -450,3 +451,10 @@ def test_invariant():
 
     h = NetHost(ip='1.1.1.1', mask=24, gateway='1.1.1.2')
     assert as_basic_type(h) == {'gateway': '1.1.1.2', 'ip': '1.1.1.1', 'mask': 24}
+
+
+def test_contract_info():
+    convert_int = convert(int)
+    info = "convert to int"
+    assert convert_int.info == info
+    assert str(convert_int) == info

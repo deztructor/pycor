@@ -31,12 +31,11 @@ def set_contract_info(target, info):
 
 @functools.singledispatch
 def get_contract_info(obj):
-    return getattr(obj, '_contract_info', obj.__doc__ or repr(obj))
-
-
-get_contract_info.register(type)
-def get_contract_info_for_type(obj):
-    return obj.__name__
+    return (
+        obj.__name__
+        if isinstance(obj, type)
+        else getattr(obj, '_contract_info', repr(obj))
+    )
 
 
 get_contract_info.register(enum.EnumMeta)
@@ -58,6 +57,12 @@ class Operation(abc.ABC):
         `values` mapping or return `None` if target field shouldn't be set.
 
         '''
+
+    def __str__(self):
+        return self.info
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.info)
 
 
 class CombineMixin:
