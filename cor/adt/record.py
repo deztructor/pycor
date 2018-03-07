@@ -6,7 +6,6 @@ import types
 
 from .error import *
 from .operation import (
-    _obj_info,
     as_basic_type,
     ContractInfo,
     convert,

@@ -30,17 +30,17 @@ def set_contract_info(target, info):
     target._contract_info = ContractInfo(info)
 
 @functools.singledispatch
-def _obj_info(obj):
+def get_contract_info(obj):
     return getattr(obj, '_contract_info', obj.__doc__ or repr(obj))
 
 
-_obj_info.register(type)
-def _obj_info_for_type(obj):
+get_contract_info.register(type)
+def get_contract_info_for_type(obj):
     return obj.__name__
 
 
-_obj_info.register(enum.EnumMeta)
-def _obj_info_for_enum(obj):
+get_contract_info.register(enum.EnumMeta)
+def get_contract_info_for_enum(obj):
     return '{}({})'.format(obj.__name__, ', '.join('"{}"'.format(v.value) for v in obj))
 
 
@@ -68,8 +68,8 @@ class CombineMixin:
         return Or(self, default_conversion(fn))
 
 
-_obj_info.register(Operation)
-def _obj_info_for_operation(obj):
+get_contract_info.register(Operation)
+def get_contract_info_for_operation(obj):
     return obj.info
 
 
@@ -106,7 +106,7 @@ class UnaryOperation(Operation, CombineMixin):
 
     @property
     def info(self):
-        res = _obj_info(self._convert)
+        res = get_contract_info(self._convert)
         return str(res) if isinstance(res, ContractInfo) else 'convert to ' + res
 
     def _convert_field(self, field_name, value):
@@ -115,7 +115,7 @@ class UnaryOperation(Operation, CombineMixin):
         except error.Error:
             raise
         except Exception as err:
-            raise error.InvalidFieldError(field_name, _obj_info(err)) from err
+            raise error.InvalidFieldError(field_name, get_contract_info(err)) from err
 
 
 class SimpleConversion(UnaryOperation):
@@ -134,7 +134,7 @@ class SimpleConversion(UnaryOperation):
         except KeyError as err:
             raise error.MissingFieldError(field_name) from err
         except Exception as err:
-            raise error.InvalidFieldError(field_name, _obj_info(err)) from err
+            raise error.InvalidFieldError(field_name, get_contract_info(err)) from err
 
         return self._convert_field(field_name, input_data)
 
@@ -149,9 +149,9 @@ class BinaryOperation(Operation):
     @property
     def info(self):
         return '{} {} {}'.format(
-            _obj_info(self._left),
+            get_contract_info(self._left),
             self._operation_name,
-            _obj_info(self._right)
+            get_contract_info(self._right)
         )
 
 
@@ -295,7 +295,7 @@ def choose_by_field(name, union_factories):
     assert(all(isinstance(cls, Factory) for cls in union_factories))
 
     def _get_choice_info():
-        return 'or '.join(_obj_info(cls) for cls in union_factories)
+        return 'or '.join(get_contract_info(cls) for cls in union_factories)
 
     def _get_contract_info():
         return ('choose ({}) matching against'
