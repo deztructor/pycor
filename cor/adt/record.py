@@ -13,6 +13,10 @@ from .operation import (
     Operation,
     SimpleConversion,
 )
+from .hook import (
+    HooksFactory,
+    Target,
+)
 
 
 def _get_input_mapping(values, overrides):
@@ -26,14 +30,27 @@ def _get_input_mapping(values, overrides):
 def _split_record_namespace(namespace):
     fields = []
     other = {}
+    hooks = {}
+
     for k, v in namespace.items():
         if isinstance(v, Operation):
             fields.append((k, v))
+        elif isinstance(v, HooksFactory):
+            if v.operation is not None:
+                fields.append((k, v.operation))
+
+            for hook in v.gen_hooks(k):
+                target = hook.hook_target
+                ensure_has_type(Target, target)
+                target_hooks = hooks.setdefault(target, [])
+                target_hooks.append(hook)
         else:
             other[k] = v
+
     return types.SimpleNamespace(
         fields=fields,
-        other=other
+        other=other,
+        hooks=hooks
     )
 
 
@@ -70,6 +87,8 @@ class RecordMeta(abc.ABCMeta):
             '_contract_info': ContractInfo('convert to' + name),
             '_factory': None
         }
+        for target, hooks in namespaces.hooks.items():
+            cls_dict[target.value] = hooks
 
         return super().__new__(
             cls, name, (record_base,),
@@ -95,6 +114,12 @@ class RecordBase(collections.Mapping):
             self._initialized = True
         except Exception as err:
             raise RecordError(self.__class__.__name__, "init") from err
+
+        try:
+            for hook in getattr(self, Target.PostInit.value, []):
+                hook(self)
+        except Exception as err:
+            raise RecordError(self.__class__.__name__, "post-init") from err
 
     @classmethod
     def get_factory(cls):

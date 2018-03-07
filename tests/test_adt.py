@@ -1,7 +1,7 @@
 from collections import namedtuple
 from enum import Enum
 from functools import partial
-import unittest
+import types
 
 import pytest
 
@@ -10,6 +10,11 @@ from cor.adt.error import (
     InvalidFieldError,
     MissingFieldError,
     RecordError,
+)
+from cor.adt.hook import (
+    HooksFactory,
+    field_invariant,
+    Target,
 )
 from cor.adt.record import (
     as_basic_type,
@@ -22,6 +27,7 @@ from cor.adt.record import (
 from cor.adt.operation import (
     ContractInfo,
     convert,
+    default_conversion,
     expect_type,
     expect_types,
     get_contract_info,
@@ -82,6 +88,7 @@ def test_convert():
         Input.Good, ('1', 1), (2, 2),
         Input.Bad, (None, TypeError), ('s', ValueError),
     )
+
 
 def test_provide_missing():
     _test_conversion(
@@ -432,12 +439,64 @@ def test_subrecord():
     host2 = Host2(hostname='bar', connection=connection_data)
 
 
+def test_hooks():
+    identity = lambda *args: args
+    factory = field_invariant(identity)
+    invariants = list(factory.gen_hooks('foo'))
+    assert len(invariants) == 1
+
+    identity_invariant = invariants[0]
+    assert identity_invariant.hook_target == Target.PostInit
+    obj = types.SimpleNamespace(foo=5)
+    res = identity_invariant(obj)
+    assert res == (obj, 'foo', 5)
+
+    merge_name_value = lambda _1, name, value: '{}-{}'.format(name, value)
+
+    factory2 = factory << field_invariant(merge_name_value)
+
+    invariants = list(factory2.gen_hooks('bar'))
+    assert len(invariants) == 2
+    assert all(i.hook_target == Target.PostInit for i in invariants)
+    obj = types.SimpleNamespace(bar=6)
+    assert [i(obj) for i in invariants] == [(obj, 'bar', 6), 'bar-6']
+
+    convert_int = convert(int)
+    factory_op_int = convert_int << factory
+    assert isinstance(factory_op_int, HooksFactory)
+    assert factory.operation == None, \
+        "Original factory should remain the same"
+    assert factory_op_int.operation == convert_int
+
+    convert_str = convert(str)
+    factory_op_str = convert_str << factory << factory_op_int
+    assert isinstance(factory_op_str, HooksFactory)
+    assert factory.operation == None, \
+        "Original factory should remain the same"
+    assert factory_op_int.operation == convert_int, \
+        "Original factory should remain the same"
+    assert factory_op_str.operation == convert_str, \
+        "Factory should use the leftmost operation"
+
+    with pytest.raises(TypeError):
+        factory << convert_int, \
+            "HooksFactory should be added (after) on top of operation tree"
+
+    pytest.raises(ValueError, default_conversion, factory)
+    with pytest.raises(ValueError):
+        convert_str >> factory, "HooksFactory can't be used in conversion pipe"
+
+
 def test_invariant():
     import ipaddress
 
     class Host(Record):
-        ip=convert(ipaddress.ip_address)
-        mask=expect_type(int)
+        ip = convert(ipaddress.ip_address)
+        mask = expect_type(int)
+
+        @property
+        def network(self):
+            return ipaddress.ip_network("{}/{}".format(self.ip, self.mask), strict=False)
 
     @as_basic_type.register(ipaddress.IPv4Address)
     def ipv4_as_basic_type(v):
@@ -446,11 +505,19 @@ def test_invariant():
     h = Host(ip='1.1.1.1', mask=24)
     assert as_basic_type(h) == {'ip': '1.1.1.1', 'mask': 24}
 
+    def check_gateway(host, _, field_value):
+        if not field_value in host.network:
+            raise ValueError()
+
     class NetHost(Host):
-        gateway=convert(ipaddress.ip_address)
+        gateway = (
+            convert(ipaddress.ip_address)
+            << field_invariant(check_gateway)
+        )
 
     h = NetHost(ip='1.1.1.1', mask=24, gateway='1.1.1.2')
     assert as_basic_type(h) == {'gateway': '1.1.1.2', 'ip': '1.1.1.1', 'mask': 24}
+    pytest.raises(RecordError, NetHost, ip='1.1.1.1', mask=24, gateway='1.2.1.2')
 
 
 def test_contract_info():
