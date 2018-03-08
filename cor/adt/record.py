@@ -91,7 +91,7 @@ class RecordMeta(abc.ABCMeta):
             cls_dict[target.value] = hooks
 
         return super().__new__(
-            cls, name, (record_base,),
+            cls, name, bases,
             {**namespaces.other, **cls_dict},
             **kwds
         )
@@ -288,6 +288,13 @@ def record_factory(cls_name, **fields):
 
 def extensible_record_factory(cls_name, **fields):
     return RecordMeta(cls_name, (ExtensibleRecord,), fields).get_factory()
+
+
+def extended_record(cls_name, bases, **fields):
+    assert isinstance(bases, tuple)
+    assert len(bases) > 0
+    assert issubclass(bases[0], RecordBase)
+    return RecordMeta(cls_name, bases, fields).get_factory()
 
 
 def subrecord(record_type):
