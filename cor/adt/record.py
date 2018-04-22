@@ -162,9 +162,7 @@ class RecordBase(collections.Mapping):
 
     @classmethod
     def gen_record_names(cls):
-        for name in cls.__slots__:
-            if name[0] == '_':
-                break
+        for name in cls._fields:
             yield name
 
     def __eq__(self, other):
@@ -265,9 +263,7 @@ class ExtensibleRecord(RecordBase, metaclass=RecordMeta):
         return len(self._fields) + len(self.__dict__)
 
     def gen_names(self):
-        for name in self.__slots__:
-            if name[0] == '_':
-                break
+        for name in self._fields:
             yield name
         yield from self.__dict__.keys()
 
