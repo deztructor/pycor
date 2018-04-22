@@ -19,14 +19,6 @@ from .hook import (
 )
 
 
-def _get_input_mapping(values, overrides):
-    if not values:
-        return overrides
-
-    ensure_has_type(collections.Mapping, values)
-    return {**values, **overrides}
-
-
 def _split_record_namespace(namespace):
     fields = []
     other = {}
@@ -106,7 +98,10 @@ class RecordBase(collections.Mapping):
     _service_fields = ('_initialized',)
 
     def __init__(self, values=None, **overrides):
-        values = _get_input_mapping(values, overrides)
+        if not values:
+            values = overrides
+        elif overrides:
+            values = {**values, **overrides}
 
         try:
             self._initialized = False
