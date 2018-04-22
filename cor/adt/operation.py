@@ -93,6 +93,31 @@ def default_conversion_for_operation(obj):
     return obj
 
 
+class _Something(Operation):
+    @property
+    def info(self):
+        return 'something'
+
+    def prepare_field(self, field_name: str, values: collections.Mapping):
+        return (field_name, values[field_name])
+
+
+something = _Something()
+
+
+class _Anything(Operation):
+    @property
+    def info(self):
+        return 'anything'
+
+    def prepare_field(self, field_name: str, values: collections.Mapping):
+        value = values.get(field_name)
+        return (field_name, value) if value is not None else None
+
+
+anything = _Anything()
+
+
 class UnaryOperation(Operation, CombineMixin):
     '''An operation performing conversion using `convert` function
 
