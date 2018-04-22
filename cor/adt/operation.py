@@ -253,6 +253,23 @@ class _ProvideMissing(SimpleConversion):
 provide_missing = _ProvideMissing
 
 
+class _GenerateMissing(SimpleConversion):
+    def __init__(self, get_default_value):
+        @describe_contract(
+            'generate {} if missing'.format(get_contract_info( get_default_value))
+        )
+        def replace_optional(v):
+            return get_default_value() if v is None else v
+
+        super().__init__(replace_optional)
+
+    def prepare_field(self, field_name, values):
+        return self._convert_field(field_name, values.get(field_name))
+
+
+generate_missing = _GenerateMissing
+
+
 def only_if(fn, info, err_cls=ValueError):
     cond = error.ensure_callable(fn)
 
