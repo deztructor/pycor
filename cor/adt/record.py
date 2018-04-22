@@ -191,6 +191,11 @@ class RecordBase(collections.Mapping):
         except AttributeError as err:
             raise KeyError(name) from err
 
+    def __getattr__(self, name):
+        if name not in self._fields:
+            raise AttributeError(name)
+        return None
+
 
 class Factory(SimpleConversion):
     '''Wraps record construction
@@ -230,7 +235,7 @@ class Record(RecordBase, metaclass=RecordMeta):
             setattr(self, name, value)
 
     def __setattr__(self, name, value):
-        if name != '_initialized' and name in self.__slots__ and self._initialized:
+        if name != '_initialized' and self._initialized:
             raise AccessError(name)
         super().__setattr__(name, value)
 
