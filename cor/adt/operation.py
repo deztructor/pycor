@@ -29,6 +29,7 @@ class ContractInfo:
 def set_contract_info(target, info):
     target._contract_info = ContractInfo(info)
 
+
 @functools.singledispatch
 def get_contract_info(obj):
     return (
@@ -54,7 +55,9 @@ class Operation(abc.ABC):
         '''extract and convert data for the field
 
         Function should extract and convert field value from the provided
-        `values` mapping or return `None` if target field shouldn't be set.
+        `values` mapping (input mapping supplied as the input for the whole
+        record) to the resulting field_value or return `None` if target field
+        shouldn't be set.
 
         '''
 
@@ -66,6 +69,13 @@ class Operation(abc.ABC):
 
 
 class CombineMixin:
+    '''provide functionality to combine operation with other
+
+    "rshift" (>>) operation is the piping of the previous operation result, "or"
+    (|) is the alternative operation applied if the previous operation
+    application is failed
+
+    '''
     def __rshift__(self, fn):
         return Pipe(self, default_conversion(fn))
 
@@ -94,6 +104,13 @@ def default_conversion_for_operation(obj):
 
 
 class _Something(Operation):
+    '''accept existing value of any type
+
+    value corresponding to the field name should be present in the input mapping
+    and could have any type
+
+    '''
+
     @property
     def info(self):
         return 'something'
@@ -106,6 +123,13 @@ something = _Something()
 
 
 class _Anything(Operation):
+    '''accept optional value of any type
+
+    value corresponding to the field name should not be present in the input
+    mapping and if present, it could have any type
+
+    '''
+
     @property
     def info(self):
         return 'anything'
@@ -281,7 +305,7 @@ provide_missing = _ProvideMissing
 class _GenerateMissing(SimpleConversion):
     def __init__(self, get_default_value):
         @describe_contract(
-            'generate {} if missing'.format(get_contract_info( get_default_value))
+            'generate {} if missing'.format(get_contract_info(get_default_value))
         )
         def replace_optional(v):
             return get_default_value() if v is None else v
