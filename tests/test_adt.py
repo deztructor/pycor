@@ -280,7 +280,7 @@ def test_empty_record():
 
     assert as_basic_type(foo) == 'Foo'
 
-    pytest.raises(AttributeError, setattr, foo, 'bar', 1)
+    pytest.raises(AccessError, setattr, foo, 'bar', 1)
     pytest.raises(AttributeError, getattr, foo, 'bar')
 
     foo_factory = record_factory('Foo')
@@ -305,7 +305,7 @@ def test_minimal_record():
     assert foo == {'id': 12}
     assert Foo(id=11) != foo
 
-    with pytest.raises(AccessError, msg="Shouldn't allow to change fields"):
+    with pytest.raises(AccessError, message="Shouldn't allow to change fields"):
         foo.id = 13
 
     foo2 = Foo.get_factory()(id=12)
