@@ -25,6 +25,7 @@ from cor.adt.record import (
     record_factory,
 )
 from cor.adt.operation import (
+    anything,
     ContractInfo,
     convert,
     default_conversion,
@@ -36,6 +37,7 @@ from cor.adt.operation import (
     provide_missing,
     should_be,
     skip_missing,
+    something,
     Tag,
 )
 
@@ -127,6 +129,33 @@ def test_skip_missing():
         Input.Good,
         ('foo', {}, None),
         ('foo', {'bar': 1, 'foo': 2}, 2),
+    )
+
+
+def test_something():
+    conversion = something
+    _test_prepare_field(
+        conversion,
+        Input.Good,
+        ('foo', {'foo': 1}, 1),
+        ('foo', {'foo': '1'}, '1'),
+        Input.Bad,
+        ('foo', None, TypeError),
+        ('foo', {}, KeyError),
+        ('foo', {'bar': 1}, KeyError),
+    )
+
+
+def test_anything():
+    conversion = anything
+    _test_prepare_field(
+        conversion,
+        Input.Good,
+        ('foo', {}, None),
+        ('foo', {'foo': 1}, 1),
+        ('foo', {'foo': '1'}, '1'),
+        Input.Bad,
+        ('foo', None, AttributeError),
     )
 
 

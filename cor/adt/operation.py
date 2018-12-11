@@ -116,7 +116,7 @@ class _Something(Operation):
         return 'something'
 
     def prepare_field(self, field_name: str, values: collections.Mapping):
-        return (field_name, values[field_name])
+        return values[field_name]
 
 
 something = _Something()
@@ -135,8 +135,7 @@ class _Anything(Operation):
         return 'anything'
 
     def prepare_field(self, field_name: str, values: collections.Mapping):
-        value = values.get(field_name)
-        return (field_name, value) if value is not None else None
+        return values.get(field_name)
 
 
 anything = _Anything()
