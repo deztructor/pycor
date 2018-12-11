@@ -169,14 +169,14 @@ def _test_binop_conversion(conversion, *args, **kwargs):
 
     good, bad = _prepare_test_args(*args, **kwargs)
     good = [
-        (['foo', {'foo': value}], res)
+        ('foo', {'foo': value}, res)
         for value, res in good
     ]
     bad = [
-        (['foo', {'foo': value}], err)
+        ('foo', {'foo': value}, err)
         for value, err in bad
     ]
-    _test_good_bad(conversion.info, conversion.prepare_field, good, bad)
+    _test_prepare_field(conversion, good=good, bad=bad)
 
 
 def test_or():
