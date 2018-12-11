@@ -39,7 +39,7 @@ def get_contract_info(obj):
     )
 
 
-get_contract_info.register(enum.EnumMeta)
+@get_contract_info.register(enum.EnumMeta)
 def get_contract_info_for_enum(obj):
     return '{}({})'.format(obj.__name__, ', '.join('"{}"'.format(v.value) for v in obj))
 
@@ -83,7 +83,7 @@ class CombineMixin:
         return Or(self, default_conversion(fn))
 
 
-get_contract_info.register(Operation)
+@get_contract_info.register(Operation)
 def get_contract_info_for_operation(obj):
     return obj.info
 

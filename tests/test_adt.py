@@ -358,11 +358,13 @@ def test_minimal_record():
     assert foo2 != Duet(id=12, name='')
 
 
+class WheelerType(Tag):
+    Bicycle = 'bicycle'
+    Car = 'car'
+    Truck = 'truck'
+
+
 def test_extensible_record():
-    class WheelerType(Tag):
-        Bicycle = 'bicycle'
-        Car = 'car'
-        Truck = 'truck'
 
     class Wheeler(ExtensibleRecord):
         vehicle_type = convert(WheelerType)
@@ -550,7 +552,19 @@ def test_invariant():
 
 
 def test_contract_info():
-    convert_int = convert(int)
-    info = "convert to int"
-    assert convert_int.info == info
-    assert str(convert_int) == info
+    data = (
+        (convert(int), "convert to int"),
+        (convert(str), "convert to str"),
+        (convert(WheelerType), 'convert to WheelerType("bicycle", "car", "truck")'),
+        (expect_type(int), "accept only if has type int"),
+        (not_empty, "accept only if not empty"),
+        (provide_missing(42) >> convert(int), "provide 42 if missing then convert to int"),
+        (skip_missing >> convert(int), "skip missing then convert to int"),
+        (expect_type(int) | expect_type(str), "accept only if has type int or accept only if has type str"),
+        (
+            convert(int) >> only_if(lambda v: v > 10, 'value > 10'),
+            "convert to int then accept only if value > 10"
+        ),
+    )
+    for conversion, expected_info in data:
+        assert get_contract_info(conversion) == expected_info
