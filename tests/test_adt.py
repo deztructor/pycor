@@ -21,6 +21,7 @@ from cor.adt.record import (
     ExtensibleRecord,
     Factory,
     Record,
+    RecordMixin,
     subrecord,
     record_factory,
 )
@@ -568,3 +569,23 @@ def test_contract_info():
     )
     for conversion, expected_info in data:
         assert get_contract_info(conversion) == expected_info
+
+
+def test_record_mixin():
+    class T(RecordMixin):
+        a = expect_type(int)
+        b = expect_type(str)
+
+    class A(ExtensibleRecord, T):
+        pass
+
+    class B(Record, T):
+        c = convert(WheelerType)
+
+    assert list(A.gen_record_names()) == ['a', 'b']
+    assert list(B.gen_record_names()) == ['a', 'b', 'c']
+
+    a = A(a=1, b='foo', c='car')
+    b = B(a)
+
+    pytest.raises(RecordError, B, c='car')

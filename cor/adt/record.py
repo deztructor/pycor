@@ -46,6 +46,17 @@ def _split_record_namespace(namespace):
     )
 
 
+class RecordMixin:
+    '''Base class for record templates
+
+    RecordMixin object can be used to share same set of properties between
+    Records of different types - used as a template. To become a real record
+    subclass should inherit RecordBase.
+
+    '''
+    pass
+
+
 class RecordMeta(abc.ABCMeta):
     def __init__(cls, name, bases, namespace, **kwds):
         cls._factory = Factory(cls)
@@ -58,9 +69,12 @@ class RecordMeta(abc.ABCMeta):
         def gen_mro_fields(kls):
             if not hasattr(kls, 'mro'):
                 return
+
             for base in reversed(kls.mro()):
                 if issubclass(base, RecordBase):
                     yield base._fields.items()
+                elif issubclass(base, RecordMixin):
+                    yield _split_record_namespace(vars(base)).fields
 
         namespaces = _split_record_namespace(namespace)
 
