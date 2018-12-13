@@ -120,6 +120,11 @@ class RecordBase(collections.Mapping):
         try:
             self._initialized = False
             self._initialize(values)
+            for hook in getattr(self, Target.Init.value, []):
+                res = hook(self)
+                if res:
+                    name, value = res
+                    setattr(self, name, value)
             self._initialized = True
         except Exception as err:
             raise RecordError(self.__class__.__name__, "init") from err
