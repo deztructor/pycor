@@ -10,6 +10,7 @@ from .operation import (
     ContractInfo,
     convert,
     default_conversion,
+    get_contract_info,
     Operation,
     SimpleConversion,
 )
@@ -214,6 +215,11 @@ class RecordBase(collections.Mapping):
         if name not in self._fields:
             raise AttributeError(name)
         return None
+
+
+@get_contract_info.register(RecordBase)
+def get_contract_info_for_record(obj):
+    return obj.get_contract_info()
 
 
 class Factory(SimpleConversion):
