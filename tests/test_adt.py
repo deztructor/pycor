@@ -66,8 +66,9 @@ def _test_good_bad(info, convert, good, bad):
 
     for input_data, err in bad:
         test_info = '{}: Should cause exception: {}'.format(info, input_data)
-        with pytest.raises(err, message=test_info):
+        with pytest.raises(err):
             convert(*input_data)
+            pytest.fail(test_info)
 
 
 def _test_conversion(conversion, *args, **kwargs):
@@ -335,8 +336,9 @@ def test_minimal_record():
     assert foo == {'id': 12}
     assert Foo(id=11) != foo
 
-    with pytest.raises(AccessError, message="Shouldn't allow to change fields"):
+    with pytest.raises(AccessError):
         foo.id = 13
+        pytest.fail("Shouldn't allow to change fields")
 
     foo2 = Foo.get_factory()(id=12)
     assert as_basic_type(foo2) == {'id': 12}
@@ -551,6 +553,9 @@ def test_invariant():
     assert as_basic_type(h) == {'gateway': '1.1.1.2', 'ip': '1.1.1.1', 'mask': 24}
     pytest.raises(RecordError, NetHost, ip='1.1.1.1', mask=24, gateway='1.2.1.2')
 
+
+def test_field_aggregate():
+    print('TODO')
 
 def test_contract_info():
     data = (
